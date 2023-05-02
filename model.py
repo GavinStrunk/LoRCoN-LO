@@ -23,7 +23,7 @@ class LoRCoNLO(nn.Module):
                     num_layers=4, 
                     dropout=0, 
                     batch_first=True,
-                    bidirectional=True).to("cuda:0")
+                    bidirectional=True).to(self.device)
         self.rnn_drop_out = nn.Dropout(0.4)
         
         self.fc1 = nn.Linear(2048, 6).to(self.device)

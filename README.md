@@ -85,6 +85,10 @@ Rellis-3D model was trained with 00 to 03 sequences.
 
 When downloading and running the model, please modify the checkpoint related code in `confg/config.yaml`.
 
+## Troubleshooting
+Error 1: AttributeError: module 'distutils' has no attribute 'version'
+Fix: pip install setuptools==59.5.0
+
 ## Paper
 ```
 @inproceedings{jung2023lorcon,
