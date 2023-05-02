@@ -3,17 +3,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class LoRCoNLO(nn.Module):
-    def __init__(self, batch_size, batchNorm=True):
+    def __init__(self, batch_size, batchNorm=True, device="cuda"):
         super(LoRCoNLO,self).__init__()
         
         self.batch_size = batch_size
+        self.device = device
         
-        self.simple_conv1 = nn.Conv2d(in_channels=10, out_channels=32, kernel_size=3, stride=(1,2), padding=(1,0)).to("cuda:1")
-        self.simple_conv2 = nn.Conv2d(32, 64, 3, (1,2), (1,0)).to("cuda:1")
-        self.simple_conv3 = nn.Conv2d(64, 128, 3, (1,2), (1,0)).to("cuda:1")
-        self.simple_conv4 = nn.Conv2d(128, 256, 3, (2,2), (1,0)).to("cuda:1")
-        self.simple_conv5 = nn.Conv2d(256, 512, 3, (2,2), (1,0)).to("cuda:1")
-        self.simple_conv6 = nn.Conv2d(512, 128, 1, 1, (1,0)).to("cuda:1")
+        self.simple_conv1 = nn.Conv2d(in_channels=10, out_channels=32, kernel_size=3, stride=(1,2), padding=(1,0)).to(self.device)
+        self.simple_conv2 = nn.Conv2d(32, 64, 3, (1,2), (1,0)).to(self.device)
+        self.simple_conv3 = nn.Conv2d(64, 128, 3, (1,2), (1,0)).to(self.device)
+        self.simple_conv4 = nn.Conv2d(128, 256, 3, (2,2), (1,0)).to(self.device)
+        self.simple_conv5 = nn.Conv2d(256, 512, 3, (2,2), (1,0)).to(self.device)
+        self.simple_conv6 = nn.Conv2d(512, 128, 1, 1, (1,0)).to(self.device)
         
         # RNN
         self.rnn = nn.LSTM(
@@ -25,16 +26,16 @@ class LoRCoNLO(nn.Module):
                     bidirectional=True).to("cuda:0")
         self.rnn_drop_out = nn.Dropout(0.4)
         
-        self.fc1 = nn.Linear(2048, 6).to("cuda:1")
+        self.fc1 = nn.Linear(2048, 6).to(self.device)
         
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=(1, 2), padding=(1, 0))
         
-        self.conv_bn1 = nn.BatchNorm2d(32).to("cuda:1")
-        self.conv_bn2 = nn.BatchNorm2d(64).to("cuda:1")
-        self.conv_bn3 = nn.BatchNorm2d(128).to("cuda:1")
-        self.conv_bn4 = nn.BatchNorm2d(256).to("cuda:1")
-        self.conv_bn5 = nn.BatchNorm2d(512).to("cuda:1")
-        self.conv_bn6 = nn.BatchNorm2d(128).to("cuda:1")
+        self.conv_bn1 = nn.BatchNorm2d(32).to(self.device)
+        self.conv_bn2 = nn.BatchNorm2d(64).to(self.device)
+        self.conv_bn3 = nn.BatchNorm2d(128).to(self.device)
+        self.conv_bn4 = nn.BatchNorm2d(256).to(self.device)
+        self.conv_bn5 = nn.BatchNorm2d(512).to(self.device)
+        self.conv_bn6 = nn.BatchNorm2d(128).to(self.device)
 
     def forward(self, x):
         batch_size = x.size(0)
@@ -42,7 +43,7 @@ class LoRCoNLO(nn.Module):
         
         x = x.view(batch_size * rnn_size, x.size(2), x.size(3), x.size(4))
         
-        x = torch.nn.functional.pad(input=x, pad=(1, 1, 0, 0), mode='circular').to("cuda:1")
+        x = torch.nn.functional.pad(input=x, pad=(1, 1, 0, 0), mode='circular').to(self.device)
         x = self.maxpool(x)
         
         # CNN
@@ -50,40 +51,40 @@ class LoRCoNLO(nn.Module):
         
         x = x.view(batch_size, rnn_size, -1)
         
-        x, hc = self.rnn(x.to("cuda:0"))
+        x, hc = self.rnn(x.to(self.device))
 
         x = self.rnn_drop_out(x)
         
         x = x.reshape(batch_size * rnn_size, -1)
         
-        output = self.fc_part(x.to("cuda:1"))
+        output = self.fc_part(x.to(self.device))
         
         output = output.reshape(batch_size, rnn_size, -1)
 
         return output
     
     def encode_image(self, x):
-        x = torch.nn.functional.pad(input=x, pad=(1, 1, 0, 0), mode='circular').to("cuda:1")
+        x = torch.nn.functional.pad(input=x, pad=(1, 1, 0, 0), mode='circular').to(self.device)
         x = self.simple_conv1(x)
         x = self.conv_bn1(x)
         x = F.leaky_relu(x, 0.1)
-        x = torch.nn.functional.pad(input=x, pad=(1, 1, 0, 0), mode='circular').to("cuda:1")
+        x = torch.nn.functional.pad(input=x, pad=(1, 1, 0, 0), mode='circular').to(self.device)
         x = self.simple_conv2(x)
         x = self.conv_bn2(x)
         x = F.leaky_relu(x, 0.1)
-        x = torch.nn.functional.pad(input=x, pad=(1, 1, 0, 0), mode='circular').to("cuda:1")
+        x = torch.nn.functional.pad(input=x, pad=(1, 1, 0, 0), mode='circular').to(self.device)
         x = self.simple_conv3(x)
         x = self.conv_bn3(x)
         x = F.leaky_relu(x, 0.1)
-        x = torch.nn.functional.pad(input=x, pad=(1, 1, 0, 0), mode='circular').to("cuda:1")
+        x = torch.nn.functional.pad(input=x, pad=(1, 1, 0, 0), mode='circular').to(self.device)
         x = self.simple_conv4(x)
         x = self.conv_bn4(x)
         x = F.leaky_relu(x, 0.1)
-        x = torch.nn.functional.pad(input=x, pad=(1, 1, 0, 0), mode='circular').to("cuda:1")
+        x = torch.nn.functional.pad(input=x, pad=(1, 1, 0, 0), mode='circular').to(self.device)
         x = self.simple_conv5(x)
         x = self.conv_bn5(x)
         x = F.leaky_relu(x, 0.1)
-        x = torch.nn.functional.pad(input=x, pad=(1, 1, 0, 0), mode='circular').to("cuda:1")
+        x = torch.nn.functional.pad(input=x, pad=(1, 1, 0, 0), mode='circular').to(self.device)
         x = self.simple_conv6(x)
         x = self.conv_bn6(x)
         x = F.leaky_relu(x, 0.1)

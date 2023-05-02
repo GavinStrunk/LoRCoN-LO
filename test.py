@@ -22,7 +22,8 @@ if __name__ == "__main__":
     config = yaml.load(open(config_filename), yaml.Loader)
 
     os.environ["CUDA_VISIBLE_DEVICES"]=config["cuda_visible_devices"]
-    
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     cuda = torch.device('cuda')
     seq_sizes= {}
     batch_size = config["batch_size"]
@@ -76,7 +77,7 @@ if __name__ == "__main__":
     criterion = model_util.WeightedLoss(learn_hyper_params=False)
     optimizer = optim.Adagrad(model.parameters(), lr=0.0005)
 
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     
@@ -86,7 +87,7 @@ if __name__ == "__main__":
     with torch.no_grad():
         for idx, data in tqdm(enumerate(test_dataloader)):
             inputs, labels = data
-            inputs, labels = Variable(inputs.float().to('cuda:1')), Variable(labels.float().to('cuda:1'))
+            inputs, labels = Variable(inputs.float().to(device)), Variable(labels.float().to(device))
             outputs = model(inputs)
             Y_estimated_data = np.vstack((Y_estimated_data, outputs[:,-1,:].cpu().numpy()))
             test_loss += model_util.RMSEError(outputs, labels).item()
