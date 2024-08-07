@@ -9,6 +9,9 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 import torch.optim as optim
 
+import utils.models
+from kitti_odometry import KittiDataset
+
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'utils'))
 
@@ -16,17 +19,6 @@ import model as model_util
 import plot
 import process_data
 import common
-
-import automatic.meta_model.meta_model as mm
-from automatic.meta_model.distributions.distributions import MultivariateNormal
-import lightning as L
-import torch.nn as nn
-from lightning.pytorch.callbacks import EarlyStopping
-from lightning.pytorch.loggers.mlflow import MLFlowLogger
-from lightning.pytorch.callbacks.model_checkpoint import ModelCheckpoint
-import rootutils
-
-rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 if __name__ == "__main__":
     config_filename = 'config/config.yml'
@@ -81,61 +73,49 @@ if __name__ == "__main__":
         start_idx += seq_sizes[seq] - 1
     
     test_data = process_data.LoRCoNLODataset(preprocessed_folder, Y_data, test_idx, seq_sizes, rnn_size, image_width, image_height, depth_name, intensity_name, normal_name, dni_size, normal_size)
+    # test_data = KittiDataset('/home/gstrunk/Projects/1762-AUTOMATIC/Software/automatic/src/automatic/datasets/KITTI/odometry/dataset',
+    #                        input_data=['lidar_lorcon_lo'],
+    #                        kitti_sequences="05",
+    #                        output_data='rel_pose',
+    #                        data_sequence_size=4)
     
     test_dataloader = DataLoader(test_data, num_workers=num_workers, batch_size=batch_size, shuffle=False)
-    
-    model = model_util.LoRCoNLO(batch_size=batch_size, batchNorm=False, device=device)
 
-    criterion = model_util.WeightedLoss(learn_hyper_params=False)
-    optimizer = optim.Adagrad(model.parameters(), lr=0.0005)
+    model = utils.models.load_lorconlo(checkpoint_path)
+    # model = model_util.LoRCoNLO(batch_size=batch_size, batchNorm=False, device=device)
 
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    # criterion = model_util.WeightedLoss(learn_hyper_params=False)
+    # optimizer = optim.Adagrad(model.parameters(), lr=0.0005)
 
-    # Train Meta Model
-    cfg = {
-        'learning_rate': 1e-2,
-        'epochs': 100,
-    }
-    model = mm.LMetaModel(base_net=model,
-                          distribution=MultivariateNormal,
-                          learning_rate=cfg['learning_rate'],
-                          epochs=cfg['epochs'],
-                          steps_per_epoch=len(test_dataloader),
-                          test_data=test_dataloader
-                          )
+    # checkpoint = torch.load(checkpoint_path, map_location=device)
+    # model.load_state_dict(checkpoint['model_state_dict'])
+    # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-    # logger = ClearMLLogger(task=task)
-    # Configure Model checkpointing
-    model_checkpoint = ModelCheckpoint(
-        monitor='val_loss',
-        mode='min',
-        save_top_k=1,
-        filename='best-lorcon-meta-model',
-        verbose=True,
-    )
-
-    # Configure early stopping callback
-    early_stopping = EarlyStopping(
-        monitor='val_loss',
-        patience=5,
-    )
-
-    trainer = L.Trainer(
-        default_root_dir=os.path.join(os.getenv('PROJECT_ROOT'), 'data'),
-        accelerator="gpu",
-        callbacks=[model_checkpoint, early_stopping],
-        # logger=logger,
-        gradient_clip_val=0.1,
-        gradient_clip_algorithm='norm',
-        max_epochs=cfg['epochs'],
-    )
-    trainer.fit(model, train_dataloaders=test_dataloader)
+    # Save model using torchscript
+    # model.eval()
+    # x, labels = next(iter(test_dataloader))
+    # x = Variable(x.float().to(device))
+    # with torch.no_grad():
+    #     print(model(x).shape)
+    #     traced_cell = torch.jit.trace(model, (x))
+    # torch.jit.save(traced_cell, "lorconlo.pth")
+    #
+    # # Load model from torchscript
+    # model2 = torch.jit.load("lorconlo.pth")
 
     Y_estimated_data = np.empty((0, 6), dtype=np.float64)
     test_data_loader_len = len(test_dataloader)
     test_loss = 0.0
+
+    # inputs, labels = test_data[0]
+    # testd = Variable(inputs.float().to(device))
+    # testd = testd[None, :]
+    # print(testd.shape)
+    # outputs = model(testd)
+    #
+    # import json
+    # with open('../../../Projects/1762-AUTOMATIC/Software/automatic/src/automatic/test.txt', 'w') as file:
+    #     file.write(json.dumps({'inputs': testd.cpu().detach().numpy().tolist(), 'labels': labels.numpy().tolist(), 'outputs': outputs.cpu().detach().numpy().tolist()}))
 
     with torch.no_grad():
         for idx, data in tqdm(enumerate(test_dataloader)):
@@ -153,6 +133,6 @@ if __name__ == "__main__":
     seq_sizes = {}
     seq_sizes = process_data.count_seq_sizes(preprocessed_folder, data_seqs, seq_sizes)
 
-    plot.plot_gt(Y_origin_data, pose_folder, preprocessed_folder, data_seqs, seq_sizes, dataset=dataset)
-    plot.plot_results(Y_origin_data, Y_estimated_data, data_seqs, rnn_size, seq_sizes, dataset=dataset)
+    plot.plot_gt(Y_origin_data, pose_folder, preprocessed_folder, data_seqs, seq_sizes, dataset=dataset, dim="3d")
+    plot.plot_results(Y_origin_data, Y_estimated_data, data_seqs, rnn_size, seq_sizes, dataset=dataset, dim="3d")
     common.save_poses(Y_origin_data, Y_estimated_data, data_seqs, rnn_size, seq_sizes, dataset=dataset)

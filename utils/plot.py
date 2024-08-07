@@ -50,6 +50,7 @@ def plot_results(Y_origin_data, Y_estimated_data, data_seqs, rnn_size, seq_sizes
             current_pose = current_pose.reshape(4,4)
             poses[idx] = current_pose
 
+        print(poses)
         for idx, relative_pose in enumerate(Y_estimated_data[start_idx-i*rnn_size:end_idx-(i+1)*rnn_size]):
             rot_mat = common.euler_to_rot_mat(relative_pose[5],relative_pose[4],relative_pose[3])
             trans_mat = np.identity(4)

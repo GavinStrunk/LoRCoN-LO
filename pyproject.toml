@@ -1,0 +1,37 @@
+[tool.poetry]
+name = "lorcon-lo"
+version = "0.1.0"
+description = ""
+authors = ["Gavin Strunk <gavin.strunk@ssci.com>"]
+readme = "README.md"
+packages = [{include = "lorcon_lo"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13" #scipy requires <3.13
+torch = "^2.0.0"
+torchvision="^0.17.1"
+numpy = "^1.25.1"
+tqdm = "^4.65.0"
+pyyaml = "^6.0"
+tensorboard = "^2.13.0"
+matplotlib = "^3.7.2"
+pykitti = "^0.3.1"
+opencv-python = "^4.8.0.76"
+scipy = "^1.11.1"
+
+
+#Add PyPI as primary source to avoid warning about forward compatibility
+automatic = {path = "../../automatic", develop = true}
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
+
+#Add Artifactory to install intelligent controls based packages
+[[tool.poetry.source]]
+name = "ic"
+url = "https://frog1.ssci.com/artifactory/api/pypi/intelligent_controls_pypi/simple/"
+priority = "supplemental"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

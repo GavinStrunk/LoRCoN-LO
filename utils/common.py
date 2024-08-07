@@ -35,7 +35,7 @@ def rot_mat_to_euler(R) :
     return np.array([x, y, z])
 
 def get_original_poses(pose_folder, preprocessed_folder, data_seqs, depth_name="depth"):
-    Y_origin_data = np.array([],dtype=np.object)
+    Y_origin_data = np.array([],dtype=object)
     for idx, seq in enumerate(data_seqs):
         pose_file = os.path.join(pose_folder, seq + "_vel.txt")
         with open(pose_file, "r") as f:       
@@ -46,7 +46,7 @@ def get_original_poses(pose_folder, preprocessed_folder, data_seqs, depth_name="
             npy_names_len = len(npy_names)
 
             lines = f.readlines()
-            Y_row = np.zeros((npy_names_len), dtype=np.object)
+            Y_row = np.zeros((npy_names_len), dtype=object)
             for i, line in enumerate(lines):
                 Y_row[i] = line
             
